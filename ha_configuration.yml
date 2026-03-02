@@ -1,0 +1,57 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+recorder:
+  purge_keep_days: 3
+  commit_interval: 60 # write data every 60 seconds.
+  exclude:
+    domains:
+      - sun
+      - device_tracker
+      - updater
+    entity_globs:
+      - sensor.rpi_uptime_*
+      - sensor.processor_use_*
+      - sensor.memory_use_*
+      - sensor.load_1m_*
+      - sensor.wifi_signal_*
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+mqtt:
+  sensor:
+    - name: "Brebu - Solar System"
+      state_topic: "solar/epever/logs"
+      unique_id: "esp32_solar_epever_logs"
+      icon: "mdi:script-text-outline"
+    - name: "Brebu - Solar System Debug"
+      state_topic: "solar/epever/debug"
+      unique_id: "esp32_solar_epever_debug"
+      icon: "mdi:script-text-outline"
+  switch:
+    - name: "Prevent Deep Sleep"
+      unique_id: epever_prevent_deep_sleep
+      command_topic: solar/epever/prevent_deep_sleep
+      state_topic: solar/epever/prevent_deep_sleep
+      payload_on: "ON"
+      payload_off: "OFF"
+      retain: true
+
+    - name: "Enable Debug"
+      unique_id: epever_enable_debug
+      command_topic: solar/epever/enable_debug
+      state_topic: solar/epever/enable_debug
+      payload_on: "ON"
+      payload_off: "OFF"
+      retain: true
+  button:
+    - name: "Trigger OTA Update"
+      unique_id: epever_trigger_ota
+      command_topic: solar/epever/cmd/ota_update
+      payload_press: "update"
+      icon: "mdi:update"

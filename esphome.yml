@@ -1,0 +1,565 @@
+esphome:
+  name: epever-monitor
+  on_boot:
+    priority: -10
+    then:
+      - if:
+          condition:
+            switch.is_on: enable_debug
+          then:
+            - mqtt.publish:
+                topic: solar/epever/debug
+                payload: "BOOT: Started — waiting for WiFi (timeout 30s)"
+      # 1. Wait for WiFi to connect
+      - wait_until:
+          condition:
+            wifi.connected:
+          timeout: 30s
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - if:
+                condition:
+                  switch.is_on: enable_debug
+                then:
+                  - mqtt.publish:
+                      topic: solar/epever/debug
+                      payload: "BOOT: WiFi connected OK"
+          else:
+            - if:
+                condition:
+                  switch.is_on: enable_debug
+                then:
+                  - mqtt.publish:
+                      topic: solar/epever/debug
+                      payload: "BOOT: WiFi TIMEOUT — proceeding anyway"
+      - if:
+          condition:
+            switch.is_on: enable_debug
+          then:
+            - mqtt.publish:
+                topic: solar/epever/debug
+                payload: "BOOT: Waiting for MQTT broker (timeout 120s)"
+      # 2. Wait for MQTT broker to connect
+      - wait_until:
+          condition:
+            mqtt.connected:
+          timeout: 120s
+      - if:
+          condition:
+            mqtt.connected:
+          then:
+            - if:
+                condition:
+                  switch.is_on: enable_debug
+                then:
+                  - mqtt.publish:
+                      topic: solar/epever/debug
+                      payload: "BOOT: MQTT connected OK"
+          else:
+            - if:
+                condition:
+                  switch.is_on: enable_debug
+                then:
+                  - mqtt.publish:
+                      topic: solar/epever/debug
+                      payload: "BOOT: MQTT TIMEOUT — proceeding anyway"
+      - if:
+          condition:
+            switch.is_on: enable_debug
+          then:
+            - mqtt.publish:
+                topic: solar/epever/debug
+                payload: "BOOT: Triggering modbus poll (component.update)"
+      # 3. Force one full modbus poll so all sensor values are read and published
+      - component.update: epever_ctrl
+      - delay: 3s
+      - if:
+          condition:
+            switch.is_on: enable_debug
+          then:
+            - mqtt.publish:
+                topic: solar/epever/debug
+                payload: "BOOT: Modbus poll done — checking deep sleep condition (timeout 30s)"
+      # 4. Now check if we should stay awake or go to sleep
+      - wait_until:
+          condition:
+            - switch.is_on: prevent_deep_sleep
+          timeout: 30s
+      - if:
+          condition:
+            - switch.is_off: prevent_deep_sleep
+          then:
+            - if:
+                condition:
+                  switch.is_on: enable_debug
+                then:
+                  - mqtt.publish:
+                      topic: solar/epever/debug
+                      payload: "BOOT: prevent_deep_sleep is OFF — entering deep sleep now"
+            - deep_sleep.enter: ds
+          else:
+            - if:
+                condition:
+                  switch.is_on: enable_debug
+                then:
+                  - mqtt.publish:
+                      topic: solar/epever/debug
+                      payload: "BOOT: prevent_deep_sleep is ON — staying awake"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+http_request:
+  verify_ssl: true
+  timeout: 10s
+
+ota:
+  - platform: http_request
+
+update:
+  - platform: http_request
+    name: "Firmware Update"
+    id: firmware_update
+    source: https://amuscalu.github.io/esphome/manifest.json
+    update_interval: never
+
+deep_sleep:
+  id: ds
+  sleep_duration: 14min
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+
+mqtt:
+  id: mqtt_client
+  broker: !secret mqtt_broker
+  port: !secret mqtt_port
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  topic_prefix: solar/epever
+  birth_message:
+    topic: solar/epever/status
+    payload: online
+  will_message:
+    topic: solar/epever/status
+    payload: offline
+  on_message:
+    - topic: solar/epever/prevent_deep_sleep
+      then:
+        - if:
+            condition:
+              lambda: 'return x == "ON";'
+            then:
+              - switch.turn_on: prevent_deep_sleep
+            else:
+              - switch.turn_off: prevent_deep_sleep
+    - topic: solar/epever/enable_debug
+      then:
+        - if:
+            condition:
+              lambda: 'return x == "ON";'
+            then:
+              - switch.turn_on: enable_debug
+            else:
+              - switch.turn_off: enable_debug
+    - topic: solar/epever/cmd/ota_update
+      then:
+        - if:
+            condition:
+              switch.is_on: enable_debug
+            then:
+              - mqtt.publish:
+                  topic: solar/epever/debug
+                  payload: "OTA: Received update command — checking for firmware update"
+        - switch.turn_on: prevent_deep_sleep
+        - update.perform: firmware_update
+
+switch:
+  - platform: template
+    name: "Prevent Deep Sleep"
+    id: prevent_deep_sleep
+    optimistic: true
+    on_turn_on:
+      then:
+        - mqtt.publish:
+            topic: solar/epever/prevent_deep_sleep
+            payload: "ON"
+            retain: true
+    on_turn_off:
+      then:
+        - mqtt.publish:
+            topic: solar/epever/prevent_deep_sleep
+            payload: "OFF"
+            retain: true
+        - if:
+            condition:
+              lambda: 'return millis() > 60000;'
+            then:
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: "SWITCH: prevent_deep_sleep turned OFF — entering deep sleep"
+              - delay: 5s
+              - deep_sleep.enter: ds
+
+  - platform: template
+    name: "Enable Debug"
+    id: enable_debug
+    optimistic: true
+    on_turn_on:
+      then:
+        - mqtt.publish:
+            topic: solar/epever/enable_debug
+            payload: "ON"
+            retain: true
+    on_turn_off:
+      then:
+        - mqtt.publish:
+            topic: solar/epever/enable_debug
+            payload: "OFF"
+            retain: true
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Epever Load"
+    id: epever_load
+    address: 0x0002
+    register_type: coil
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 115200
+  flow_control_pin: GPIO18
+
+modbus:
+  id: modbus1
+  uart_id: uart_bus
+
+modbus_controller:
+  - id: epever_ctrl
+    address: 0x01
+    modbus_id: modbus1
+    setup_priority: -10
+    update_interval: 60s
+
+sensor:
+  # --- PANOURI SOLARE ---
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "PV Voltage"
+    address: 0x3100
+    register_type: read
+    unit_of_measurement: "V"
+    value_type: U_WORD
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "PV Current"
+    address: 0x3101
+    register_type: read
+    unit_of_measurement: "A"
+    value_type: U_WORD
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "PV Power"
+    address: 0x3102
+    register_type: read
+    unit_of_measurement: "W"
+    value_type: U_DWORD_R
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  # --- BATERIE ---
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Battery Voltage"
+    id: battery_voltage_val
+    address: 0x3104
+    register_type: read
+    unit_of_measurement: "V"
+    value_type: U_WORD
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+    on_value:
+      then:
+        - if:
+            condition:
+              switch.is_on: enable_debug
+            then:
+              - mqtt.publish:
+                  topic: solar/epever/debug
+                  payload: !lambda |-
+                    return "BATT: on_value fired — voltage=" + to_string(id(battery_voltage_val).state) + "V load=" + (id(epever_load).state ? "ON" : "OFF");
+        - if:
+            condition:
+              # Verificăm dacă tensiunea e critică ȘI dacă Load-ul e încă pornit
+              all:
+                - sensor.in_range:
+                    id: battery_voltage_val
+                    below: 11.8
+                - switch.is_on: epever_load
+            then:
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: !lambda |-
+                          return "BATT: LOW voltage condition MET (" + to_string(id(battery_voltage_val).state) + "V < 11.8V, load ON) — turning off load";
+              # Opțional: Poți trimite un mesaj MQTT dedicat pentru notificare în HA
+              - mqtt.publish:
+                  topic: solar/epever/logs
+                  payload: "Baterie descarcata (11.8V). Inchid routerul acum!"
+              # Așteptăm 2 secunde să plece mesajul pe internet înainte să tăiem curentul
+              - delay: 2s
+              - switch.turn_off: epever_load
+            else:
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: !lambda |-
+                          return "BATT: LOW voltage condition NOT met (voltage=" + to_string(id(battery_voltage_val).state) + "V, load=" + (id(epever_load).state ? "ON" : "OFF") + ")";
+
+        - if:
+            condition:
+              all:
+                - sensor.in_range:
+                    id: battery_voltage_val
+                    above: 12.6
+                - switch.is_off: epever_load
+            then:
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: !lambda |-
+                          return "BATT: RECOVERY condition MET (" + to_string(id(battery_voltage_val).state) + "V > 12.6V, load OFF) — turning on load";
+              - switch.turn_on: epever_load
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: "BATT: Load turned ON — waiting for MQTT reconnect (timeout 60s)"
+              # Wait for router to boot and ESP32 to reconnect to WiFi + MQTT
+              - wait_until:
+                  condition:
+                    mqtt.connected:
+                  timeout: 60s
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: !lambda |-
+                          return "BATT: MQTT reconnect " + std::string(id(mqtt_client).is_connected() ? "OK" : "TIMED OUT");
+              - mqtt.publish:
+                  topic: solar/epever/logs
+                  payload: "INFO: Baterie recuperata (12.6V). Router pornit automat!"
+            else:
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: !lambda |-
+                          return "BATT: RECOVERY condition NOT met (voltage=" + to_string(id(battery_voltage_val).state) + "V, load=" + (id(epever_load).state ? "ON" : "OFF") + ")";
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Charging Current"
+    address: 0x3105
+    register_type: read
+    unit_of_measurement: "A"
+    value_type: U_WORD
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Battery SOC"
+    address: 0x311A
+    register_type: read
+    unit_of_measurement: "%"
+    value_type: U_WORD
+    device_class: battery
+    state_class: measurement
+    accuracy_decimals: 0
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Battery Temperature"
+    address: 0x3110
+    register_type: read
+    unit_of_measurement: "°C"
+    value_type: S_WORD
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # --- CONSUMATORI (LOAD) ---
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Load Voltage"
+    address: 0x310C
+    register_type: read
+    unit_of_measurement: "V"
+    value_type: U_WORD
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Load Current"
+    address: 0x310D
+    register_type: read
+    unit_of_measurement: "A"
+    value_type: U_WORD
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Load Power"
+    address: 0x310E
+    register_type: read
+    unit_of_measurement: "W"
+    value_type: U_DWORD_R
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Controller Temperature"
+    address: 0x3111
+    register_type: read
+    unit_of_measurement: "°C"
+    value_type: S_WORD
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # --- STATISTICI ZILNICE ---
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Energy Consumed Today"
+    address: 0x3304
+    register_type: read
+    unit_of_measurement: "kWh"
+    value_type: U_DWORD_R
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Energy Generated Today"
+    address: 0x330C
+    register_type: read
+    unit_of_measurement: "kWh"
+    value_type: U_DWORD_R
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever_ctrl
+    name: "Charging Status"
+    id: charging_status_raw
+    address: 0x3201
+    register_type: read
+    unit_of_measurement: ""
+    value_type: U_WORD
+    internal: true
+    accuracy_decimals: 0
+
+  - platform: internal_temperature
+    name: "ESP32 Temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: uptime
+    name: "Uptime"
+    id: uptime_sensor
+
+interval:
+  - interval: 30s
+    then:
+      - if:
+          condition:
+            switch.is_on: enable_debug
+          then:
+            - mqtt.publish:
+                topic: solar/epever/debug
+                payload: !lambda |-
+                  return "HEARTBEAT: uptime=" + to_string(millis() / 1000) + "s mqtt=" + std::string(id(mqtt_client).is_connected() ? "OK" : "DISCONNECTED");
+
+text_sensor:
+  - platform: template
+    name: "Charging Mode"
+    lambda: |-
+      switch (((uint16_t)id(charging_status_raw).state >> 4) & 0x03) {
+        case 1: return std::string("Float");
+        case 2: return std::string("Boost");
+        case 3: return std::string("Equalization");
+        default: return std::string("No Charging");
+      }
+    update_interval: 60s

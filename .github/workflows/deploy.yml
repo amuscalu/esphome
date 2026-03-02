@@ -1,0 +1,59 @@
+name: Build & Deploy ESPHome Firmware
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create secrets.yaml
+        run: |
+          cat > secrets.yaml << 'SECRETS_EOF'
+          wifi_ssid: "${{ secrets.WIFI_SSID }}"
+          wifi_password: "${{ secrets.WIFI_PASSWORD }}"
+          mqtt_broker: "${{ secrets.MQTT_BROKER }}"
+          mqtt_port: "${{ secrets.MQTT_PORT }}"
+          mqtt_username: "${{ secrets.MQTT_USERNAME }}"
+          mqtt_password: "${{ secrets.MQTT_PASSWORD }}"
+          SECRETS_EOF
+
+      - name: Build ESPHome firmware
+        uses: esphome/build-action@v6
+        id: esphome-build
+        with:
+          yaml-file: esphome.yml
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p output
+          cp -r ${{ steps.esphome-build.outputs.name }}/* output/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
