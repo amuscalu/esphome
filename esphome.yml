@@ -80,6 +80,7 @@ esphome:
                 payload: "BOOT: Triggering modbus poll (component.update)"
       # 3. Force one full modbus poll so all sensor values are read and published
       - component.update: epever_ctrl
+      - component.update: esp32_temp
       - delay: 3s
       - if:
           condition:
@@ -571,6 +572,7 @@ sensor:
 
   - platform: internal_temperature
     name: "ESP32 Temperature"
+    id: esp32_temp
     unit_of_measurement: "°C"
     device_class: temperature
     state_class: measurement
