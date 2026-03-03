@@ -125,16 +125,7 @@ update:
     name: "Firmware Update"
     id: firmware_update
     source: https://amuscalu.github.io/esphome/manifest.json
-    update_interval: never
-
-button:
-  - platform: template
-    name: "Check for Firmware Update"
-    id: firmware_update_btn
-    icon: "mdi:refresh"
-    on_press:
-      then:
-        - component.update: firmware_update
+    update_interval: 30s
 
 deep_sleep:
   id: ds
@@ -187,6 +178,7 @@ mqtt:
                   topic: solar/epever/debug
                   payload: "OTA: Received update command — checking for firmware update"
         - switch.turn_on: prevent_deep_sleep
+        - delay: 30s
         - update.perform: firmware_update
 
 switch:
