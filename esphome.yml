@@ -1,5 +1,11 @@
+substitutions:
+  version: "dev"
+
 esphome:
   name: epever-monitor
+  project:
+    name: "amuscalu.epever_monitor"
+    version: $version
   on_boot:
     priority: -10
     then:

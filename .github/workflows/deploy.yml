@@ -31,11 +31,19 @@ jobs:
           mqtt_password: "${{ secrets.MQTT_PASSWORD }}"
           SECRETS_EOF
 
+      - name: Generate version
+        id: version
+        run: echo "version=$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set version in config
+        run: sed -i "s/version:.*\"dev\"/version: \"${{ steps.version.outputs.version }}\"/" esphome.yml
+
       - name: Build ESPHome firmware
         uses: esphome/build-action@v6
         id: esphome-build
         with:
           yaml-file: esphome.yml
+          complete-manifest: true
 
       - name: Prepare artifact
         run: |
