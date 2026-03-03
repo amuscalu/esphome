@@ -120,7 +120,7 @@ esp32:
     type: esp-idf
 
 http_request:
-  verify_ssl: false
+  verify_ssl: true
   timeout: 10s
 
 ota:
