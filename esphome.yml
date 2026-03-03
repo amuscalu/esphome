@@ -134,7 +134,8 @@ ota:
             then:
               - mqtt.publish:
                   topic: solar/epever/debug
-                  payload: "OTA: Download started — deep sleep disabled"
+                  payload: !lambda |-
+                    return "OTA: Download started — free heap=" + to_string(esp_get_free_heap_size() / 1024) + "KB";
     on_end:
       then:
         - if:
@@ -152,7 +153,8 @@ ota:
             then:
               - mqtt.publish:
                   topic: solar/epever/debug
-                  payload: !lambda 'return "OTA: Error code " + to_string(x);'
+                  payload: !lambda |-
+                    return "OTA: Error code " + to_string(x) + " — free heap=" + to_string(esp_get_free_heap_size() / 1024) + "KB";
 
 update:
   - platform: http_request
@@ -210,7 +212,8 @@ mqtt:
             then:
               - mqtt.publish:
                   topic: solar/epever/debug
-                  payload: "OTA: Received update command — checking for firmware update"
+                  payload: !lambda |-
+                    return "OTA: Received update command — free heap=" + to_string(esp_get_free_heap_size() / 1024) + "KB";
         - switch.turn_on: prevent_deep_sleep
         - delay: 30s
         - update.perform: firmware_update
@@ -576,6 +579,15 @@ sensor:
   - platform: uptime
     name: "Uptime"
     id: uptime_sensor
+
+  - platform: template
+    name: "Free Heap"
+    id: free_heap
+    unit_of_measurement: "KB"
+    state_class: measurement
+    accuracy_decimals: 1
+    lambda: 'return esp_get_free_heap_size() / 1024.0;'
+    update_interval: 30s
 
 interval:
   - interval: 30s
