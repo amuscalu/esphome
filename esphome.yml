@@ -15,7 +15,7 @@ esphome:
           then:
             - mqtt.publish:
                 topic: solar/epever/debug
-                payload: "BOOT: Started — waiting for WiFi (timeout 30s)."
+                payload: "BOOT: Started — waiting for WiFi (timeout 30s)"
       # 1. Wait for WiFi to connect
       - wait_until:
           condition:
