@@ -36,7 +36,9 @@ jobs:
         run: echo "version=$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set version in config
-        run: sed -i "s/version:.*\"dev\"/version: \"${{ steps.version.outputs.version }}\"/" esphome.yml
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i 's/version: "dev"/version: "'"$VERSION"'"/' esphome.yml
 
       - name: Build ESPHome firmware
         uses: esphome/build-action@v6
