@@ -125,6 +125,34 @@ http_request:
 
 ota:
   - platform: http_request
+    on_begin:
+      then:
+        - switch.turn_on: prevent_deep_sleep
+        - if:
+            condition:
+              switch.is_on: enable_debug
+            then:
+              - mqtt.publish:
+                  topic: solar/epever/debug
+                  payload: "OTA: Download started — deep sleep disabled"
+    on_end:
+      then:
+        - if:
+            condition:
+              switch.is_on: enable_debug
+            then:
+              - mqtt.publish:
+                  topic: solar/epever/debug
+                  payload: "OTA: Flash complete — rebooting"
+    on_error:
+      then:
+        - if:
+            condition:
+              switch.is_on: enable_debug
+            then:
+              - mqtt.publish:
+                  topic: solar/epever/debug
+                  payload: !lambda 'return "OTA: Error code " + to_string(x);'
 
 update:
   - platform: http_request
