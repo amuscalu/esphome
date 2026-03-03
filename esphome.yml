@@ -117,7 +117,7 @@ esphome:
 esp32:
   board: esp32dev
   framework:
-    type: arduino
+    type: esp-idf
 
 http_request:
   verify_ssl: false
