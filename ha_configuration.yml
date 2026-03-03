@@ -49,9 +49,3 @@ mqtt:
       payload_on: "ON"
       payload_off: "OFF"
       retain: true
-  button:
-    - name: "Trigger OTA Update"
-      unique_id: epever_trigger_ota
-      command_topic: solar/epever/cmd/ota_update
-      payload_press: "update"
-      icon: "mdi:update"
