@@ -184,6 +184,7 @@ switch:
   - platform: template
     name: "Prevent Deep Sleep"
     id: prevent_deep_sleep
+    restore_mode: ALWAYS_OFF
     optimistic: true
     on_turn_on:
       then:
@@ -214,6 +215,7 @@ switch:
   - platform: template
     name: "Enable Debug"
     id: enable_debug
+    restore_mode: ALWAYS_OFF
     optimistic: true
     on_turn_on:
       then:
