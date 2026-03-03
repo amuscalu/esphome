@@ -397,7 +397,7 @@ sensor:
               all:
                 - sensor.in_range:
                     id: battery_voltage_val
-                    above: 12.6
+                    above: 12.4
                 - switch.is_off: epever_load
             then:
               - if:
@@ -407,7 +407,7 @@ sensor:
                     - mqtt.publish:
                         topic: solar/epever/debug
                         payload: !lambda |-
-                          return "BATT: RECOVERY condition MET (" + to_string(id(battery_voltage_val).state) + "V > 12.6V, load OFF) — turning on load";
+                          return "BATT: RECOVERY condition MET (" + to_string(id(battery_voltage_val).state) + "V > 12.4V, load OFF) — turning on load";
               - switch.turn_on: epever_load
               - if:
                   condition:
@@ -431,7 +431,7 @@ sensor:
                           return "BATT: MQTT reconnect " + std::string(id(mqtt_client).is_connected() ? "OK" : "TIMED OUT");
               - mqtt.publish:
                   topic: solar/epever/logs
-                  payload: "INFO: Baterie recuperata (12.6V). Router pornit automat!"
+                  payload: "INFO: Baterie recuperata (12.4V). Router pornit automat!"
             else:
               - if:
                   condition:
