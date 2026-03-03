@@ -127,6 +127,15 @@ update:
     source: https://amuscalu.github.io/esphome/manifest.json
     update_interval: never
 
+button:
+  - platform: template
+    name: "Check for Firmware Update"
+    id: firmware_update_btn
+    icon: "mdi:refresh"
+    on_press:
+      then:
+        - component.update: firmware_update
+
 deep_sleep:
   id: ds
   sleep_duration: 14min
