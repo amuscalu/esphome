@@ -477,7 +477,7 @@ sensor:
     state_class: measurement
     accuracy_decimals: 1
     filters:
-      - multiply: 0.1
+      - multiply: 0.01
 
   # --- CONSUMATORI (LOAD) ---
   - platform: modbus_controller
@@ -530,7 +530,7 @@ sensor:
     state_class: measurement
     accuracy_decimals: 1
     filters:
-      - multiply: 0.1
+      - multiply: 0.01
 
   # --- STATISTICI ZILNICE ---
   - platform: modbus_controller
