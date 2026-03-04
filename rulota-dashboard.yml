@@ -29,7 +29,7 @@ views:
                 needle: true
                 decimal_precision: 2
                 severity:
-                  green: 12.6
+                  green: 12.4
                   yellow: 12.1
                   red: 11.5
           - type: entities
