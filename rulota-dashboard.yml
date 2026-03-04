@@ -100,7 +100,7 @@ views:
             title: Advanced Controls
             show_header_toggle: false
             entities:
-              - entity: switch.epever_monitor_prevent_deep_sleep
+              - entity: switch.prevent_deep_sleep
                 name: Stay Awake
                 icon: mdi:sleep-off
                 type: simple-entity
@@ -110,7 +110,7 @@ views:
                   action: none
                 double_tap_action:
                   action: none
-              - entity: switch.epever_monitor_enable_debug
+              - entity: switch.enable_debug
                 name: Debug Logs
                 type: simple-entity
                 tap_action:
@@ -121,3 +121,9 @@ views:
                   action: none
               - entity: update.epever_monitor_firmware_update
                 name: Firmware Status
+              - entity: sensor.brebu_solar_system_debug
+                name: Debug
+                icon: mdi:bug-outline
+              - entity: sensor.brebu_solar_system
+                name: Logs
+                icon: mdi:script-text-outline

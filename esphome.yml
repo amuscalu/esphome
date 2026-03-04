@@ -181,11 +181,8 @@ mqtt:
   password: !secret mqtt_password
   topic_prefix: solar/epever
   birth_message:
-    topic: solar/epever/status
-    payload: online
   will_message:
-    topic: solar/epever/status
-    payload: offline
+  discovery_retain: true
   on_message:
     - topic: solar/epever/prevent_deep_sleep
       then:
