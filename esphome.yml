@@ -365,7 +365,7 @@ sensor:
               all:
                 - sensor.in_range:
                     id: battery_voltage_val
-                    below: 11.8
+                    below: 12.1
                 - switch.is_on: epever_load
             then:
               - if:
@@ -375,11 +375,11 @@ sensor:
                     - mqtt.publish:
                         topic: solar/epever/debug
                         payload: !lambda |-
-                          return "BATT: LOW voltage condition MET (" + to_string(id(battery_voltage_val).state) + "V < 11.8V, load ON) — turning off load";
+                          return "BATT: LOW voltage condition MET (" + to_string(id(battery_voltage_val).state) + "V < 12.1V, load ON) — turning off load";
               # Opțional: Poți trimite un mesaj MQTT dedicat pentru notificare în HA
               - mqtt.publish:
                   topic: solar/epever/logs
-                  payload: "Baterie descarcata (11.8V). Inchid routerul acum!"
+                  payload: "Baterie descarcata (12.1V). Inchid routerul acum!"
               # Așteptăm 2 secunde să plece mesajul pe internet înainte să tăiem curentul
               - delay: 2s
               - switch.turn_off: epever_load
@@ -391,7 +391,7 @@ sensor:
                     - mqtt.publish:
                         topic: solar/epever/debug
                         payload: !lambda |-
-                          return "BATT: LOW voltage condition NOT met (voltage=" + to_string(id(battery_voltage_val).state) + "V, load=" + (id(epever_load).state ? "ON" : "OFF") + ")";
+                          return "BATT: LOW voltage condition NOT met — voltage=" + to_string(id(battery_voltage_val).state) + "V (threshold 12.1V), load=" + (id(epever_load).state ? "ON" : "OFF") + ")";
 
         - if:
             condition:
