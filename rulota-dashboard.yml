@@ -1,0 +1,123 @@
+views:
+  - title: Caravan Solar Pro
+    type: sections
+    max_columns: 3
+    sections:
+      - cards:
+          - type: heading
+            heading: 🔋 Battery & Storage
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: gauge
+                entity: sensor.epever_monitor_battery_soc
+                name: SOC
+                needle: true
+                unit_of_measurement: '%'
+                min: 0
+                max: 100
+                severity:
+                  green: 60
+                  yellow: 35
+                  red: 0
+              - type: gauge
+                entity: sensor.epever_monitor_battery_voltage
+                name: Voltage
+                min: 11.5
+                max: 15.2
+                needle: true
+                decimal_precision: 2
+                severity:
+                  green: 12.6
+                  yellow: 12.1
+                  red: 11.5
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.epever_monitor_battery_temperature
+                name: Battery Temp
+              - entity: sensor.epever_monitor_charging_current
+                name: Charging Amps
+              - entity: sensor.epever_monitor_charging_mode
+                name: Charge Mode
+          - type: history-graph
+            title: 24h Voltage Trend
+            entities:
+              - entity: sensor.epever_monitor_battery_voltage
+                name: Battery Voltage
+            hours_to_show: 24
+      - cards:
+          - type: heading
+            heading: ⚡ Solar & Load
+          - type: entities
+            title: PV Production
+            show_header_toggle: false
+            entities:
+              - entity: sensor.epever_monitor_pv_power
+                name: PV Power
+              - entity: sensor.epever_monitor_pv_voltage
+                name: PV Voltage
+              - entity: sensor.epever_monitor_pv_current
+                name: PV Current
+              - entity: sensor.epever_monitor_energy_generated_today
+                name: Generated Today
+          - type: entities
+            title: Load
+            show_header_toggle: false
+            entities:
+              - entity: switch.epever_monitor_epever_load
+                name: Epever Load
+                icon: mdi:router-wireless
+                type: simple-entity
+                tap_action:
+                  action: more-info
+                hold_action:
+                  action: none
+                double_tap_action:
+                  action: none
+              - entity: sensor.epever_monitor_load_power
+                name: Load Power
+              - entity: sensor.epever_monitor_load_voltage
+                name: Load Voltage
+              - entity: sensor.epever_monitor_energy_consumed_today
+                name: Consumed Today
+      - cards:
+          - type: heading
+            heading: 🛠️ System & Diagnostics
+          - type: entities
+            title: Hardware Health
+            entities:
+              - entity: sensor.epever_monitor_controller_temperature
+                name: Controller Temp
+              - entity: sensor.epever_monitor_esp32_temperature
+                name: ESP32 Temp
+              - entity: sensor.epever_monitor_free_heap
+                name: Free RAM (Heap)
+              - entity: sensor.epever_monitor_uptime
+                name: Uptime
+          - type: entities
+            title: Advanced Controls
+            show_header_toggle: false
+            entities:
+              - entity: switch.epever_monitor_prevent_deep_sleep
+                name: Stay Awake
+                icon: mdi:sleep-off
+                type: simple-entity
+                tap_action:
+                  action: more-info
+                hold_action:
+                  action: none
+                double_tap_action:
+                  action: none
+              - entity: switch.epever_monitor_enable_debug
+                name: Debug Logs
+                type: simple-entity
+                tap_action:
+                  action: more-info
+                hold_action:
+                  action: none
+                double_tap_action:
+                  action: none
+              - entity: update.epever_monitor_firmware_update
+                name: Firmware Status
