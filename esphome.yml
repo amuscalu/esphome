@@ -604,7 +604,7 @@ text_sensor:
   - platform: template
     name: "Charging Mode"
     lambda: |-
-      switch (((uint16_t)id(charging_status_raw).state >> 4) & 0x03) {
+      switch (((uint16_t)id(charging_status_raw).state >> 2) & 0x03) {
         case 1: return std::string("Float");
         case 2: return std::string("Boost");
         case 3: return std::string("Equalization");
