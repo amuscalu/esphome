@@ -25,7 +25,7 @@ views:
                 entity: sensor.epever_monitor_battery_voltage
                 name: Voltage
                 min: 11.5
-                max: 15.2
+                max: 15.5
                 needle: true
                 decimal_precision: 2
                 severity:
