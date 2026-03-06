@@ -574,6 +574,28 @@ sensor:
     device_class: temperature
     state_class: measurement
     accuracy_decimals: 1
+    on_value:
+      then:
+        - if:
+            condition:
+              sensor.in_range:
+                id: esp32_temp
+                above: 80.0
+            then:
+              - if:
+                  condition:
+                    switch.is_on: enable_debug
+                  then:
+                    - mqtt.publish:
+                        topic: solar/epever/debug
+                        payload: !lambda |-
+                          return "OVERHEAT: ESP32 temperature=" + to_string(id(esp32_temp).state) + "C — entering deep sleep";
+              - mqtt.publish:
+                  topic: solar/epever/logs
+                  payload: !lambda |-
+                    return "ESP32 overheating (" + to_string(id(esp32_temp).state) + "C). Entering deep sleep to cool down!";
+              - delay: 2s
+              - switch.turn_off: prevent_deep_sleep
 
   - platform: uptime
     name: "Uptime"
